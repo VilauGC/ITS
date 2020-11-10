@@ -65,10 +65,10 @@ def json_custom(x):
 
 
 class InnerEcRequest:
-    def __init__(self, itsId, certificateFormat, publicKeys, requestedSubjectAttributes):
+    def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
         self.itsId = itsId
         self.certificateFormat = certificateFormat
-        self.publicKeys = publicKeys
+        self.verificationKey = verificationKey
         self.requestedSubjectAttributes = requestedSubjectAttributes
 
 

@@ -1,10 +1,11 @@
 from flask import Flask, request
 from ECIES import decrypt_ecies
 from AESCCM import decrypt_AESCCM
-from ECDSA import verifyECDSAsecp256r1
+from ECDSA import (verifyECDSAsecp256r1, signECDSAsecp256r1)
 import json
 import base64
 import pickle
+import hashlib
 
 app = Flask(__name__)
 
@@ -77,13 +78,45 @@ def its_enrolment():
     # get the innerEcRequest
 
     innerEcRequest = inner_tbsData['payload']
-
-    #  get the itsId
+    # get the ITS publickey from InnerEcRequest
+    inner_its_publicKey = innerEcRequest.verificationKey
+    # get the itsId
 
     itsId = innerEcRequest.itsId
 
     if(itsId in allowedITS):
-        print(itsId)
+
+        # Pasul 1 in formarea unui Response
+        # Se formeaza un obiect de tip InnerEcResponse
+        json_etsiTs103097Data_Encrypted = json_custom(
+            etsiTs103097Data_Encrypted_bytes)
+        requestHash = sha3_256Hash(json_etsiTs103097Data_Encrypted)
+        responseCode = 0
+
+        # 1.1 Se formeaza certificatul ITS-ului
+        _type = 'explicit'
+        toBeSigned = {'verifyKeyIndicator': {
+            'verificationKey': inner_its_publicKey}}
+
+        toBeSigned_bytes = pickle.dumps(toBeSigned)
+        json_toBeSigned_bytes = json_custom(toBeSigned_bytes)
+
+        signature = signECDSAsecp256r1(json_toBeSigned_bytes, EA_privkey)
+
+        its_certificate = ExplicitCertificate(_type, toBeSigned, signature)
+
+        innerEcResponse = InnerEcResponse(
+            requestHash, responseCode, its_certificate)
+
+        # Pasul 2
+        # Se formeaza un obiect de tip EtsiTs102941Data
+
+        version = 1
+        content = innerEcResponse
+
+        # Pasul 3
+        # Se formeaza un obiect de tip EtsiTs103097Data-Signed
+
         return "Hello World"
     else:
         print("No such ITS found!")
@@ -91,10 +124,10 @@ def its_enrolment():
 
 
 class InnerEcRequest:
-    def __init__(self, itsId, certificateFormat, publicKeys, requestedSubjectAttributes):
+    def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
         self.itsId = itsId
         self.certificateFormat = certificateFormat
-        self.publicKeys = publicKeys
+        self.verificationKey = verificationKey
         self.requestedSubjectAttributes = requestedSubjectAttributes
 
 
@@ -125,6 +158,13 @@ class EtsiTs103097Data_Encrypted:
         self.ciphertext = ciphertext
 
 
+class ExplicitCertificate:
+    def __init__(self, _type, toBeSigned, signature):
+        self.type = _type
+        self.toBeSigned = toBeSigned
+        self.signature = signature
+
+
 def json_to_bytes(x):
     """
     x is str type
@@ -144,6 +184,11 @@ def json_custom(x):
     base64_x_message = base64_x_bytes.decode('ascii')
     base64_x_message = json.dumps(base64_x_message)
     return base64_x_message
+
+
+def sha3_256Hash(msg):
+    hashBytes = hashlib.sha3_256(msg.encode("utf8")).digest()
+    return int.from_bytes(hashBytes, byteorder="big")
 
 
 app.run(port=5001)
