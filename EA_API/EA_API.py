@@ -1,6 +1,6 @@
 from flask import Flask, request
-from ECIES import decrypt_ecies
-from AESCCM import decrypt_AESCCM
+from ECIES import (decrypt_ecies, encrypt_ecies)
+from AESCCM import (decrypt_AESCCM, encrypt_AESCCM, encrypt_AESCCM_withKey)
 from ECDSA import (verifyECDSAsecp256r1, signECDSAsecp256r1)
 import json
 import base64
@@ -114,8 +114,48 @@ def its_enrolment():
         version = 1
         content = innerEcResponse
 
+        etsiTs102941Data = EtsiTs102941Data(version, content)
+
         # Pasul 3
         # Se formeaza un obiect de tip EtsiTs103097Data-Signed
+        hashId = 'SHA3-256'
+        tbsData = {'payload': etsiTs102941Data, 'headerInfo': ''}
+        tbsData_bytes = pickle.dumps(tbsData)
+        json_tbsData_bytes = json_custom(tbsData_bytes)
+        signer = ''
+        signature = signECDSAsecp256r1(json_tbsData_bytes, EA_privkey)
+
+        etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
+            hashId, tbsData, signer, signature)
+
+        # Pasul 4
+        # Se formeaza un obiect de tip EtsiTs103097Data-Encrypted
+        etsiTs103097Data_Signed_bytes = pickle.dumps(etsiTs103097Data_Signed)
+        recipients = ''
+        (V, c, t, salt) = encrypt_ecies(
+            etsiTs103097Data_Signed_bytes, ITS_pubkey)
+        cipherText = (V, c, t.digest(), salt)
+
+        etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(
+            recipients, cipherText)
+
+        # Pasul 5
+        # Criptez obiectul etsiTs103097Data_Encrypted cu aceeasi cheie AES-CCM
+
+        etsiTs103097Data_Encrypted_bytes = pickle.dumps(
+            etsiTs103097Data_Encrypted)
+
+        cipher_etsiTs103097Data_Encrypted_bytes = encrypt_AESCCM_withKey(
+            etsiTs103097Data_Encrypted_bytes, AES_CCM_KEY)
+
+        json_cipher = json_custom(
+            cipher_etsiTs103097Data_Encrypted_bytes['ciphertext'])
+        json_tag = json_custom(
+            cipher_etsiTs103097Data_Encrypted_bytes['auth-tag'])
+        json_header = json_custom(
+            cipher_etsiTs103097Data_Encrypted_bytes['header'])
+        json_nonce = json_custom(
+            cipher_etsiTs103097Data_Encrypted_bytes['nonce'])
 
         return "Hello World"
     else:
