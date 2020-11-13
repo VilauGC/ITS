@@ -157,7 +157,13 @@ def its_enrolment():
         json_nonce = json_custom(
             cipher_etsiTs103097Data_Encrypted_bytes['nonce'])
 
-        return "Hello World"
+        response_data = {'ciphertext': json_cipher,
+                         'nonce': json_nonce,
+                         'header': json_header,
+                         'tag': json_tag}
+        json_response_data = json.dumps(response_data)
+
+        return response_data
     else:
         print("No such ITS found!")
         return "No such ITS found!"

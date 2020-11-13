@@ -64,6 +64,17 @@ def json_custom(x):
     return base64_x_message
 
 
+def json_to_bytes(x):
+    """
+    x is str type
+    """
+    base64_x_message = json.loads(x)
+    base64_x_message = base64_x_message.encode('ascii')
+    message_bytes = base64.b64decode(base64_x_message)
+
+    return message_bytes
+
+
 class InnerEcRequest:
     def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
         self.itsId = itsId
@@ -191,7 +202,6 @@ f.close()
 
 (V, c, t, salt) = encrypt_ecies(
     cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'], EA_pubKey)
-print(cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'])
 # Pasul 8
 # Formez obiectul JSON care va fi pus in body-ul request-lui http catre EA API
 
@@ -218,12 +228,27 @@ data = {'c': json_c, 'V': json_V, 't': json_t,
         'header': json_header,
         'tag': json_tag}
 
-# sending post request and saving response as response object
+# sending post request to http://127.0.0.1:5001/its-enrolment
 r = requests.post(url=API_ENDPOINT, json=data)
 
-# extracting response text
-pastebin_url = r.text
-print("The pastebin URL is:%s" % pastebin_url)
+data_response = json.loads(r.text)
 
+response_cipher_bytes = json_to_bytes(data_response['ciphertext'])
+response_nonce_bytes = json_to_bytes(data_response['nonce'])
+response_header_bytes = json_to_bytes(data_response['header'])
+response_tag_bytes = json_to_bytes(data_response['tag'])
+
+etsiTs103097Data_Encrypted_bytes = decrypt_AESCCM(
+    cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'],
+    response_nonce_bytes,
+    response_cipher_bytes,
+    response_tag_bytes,
+    response_header_bytes)
+
+etsiTs103097Data_Encrypted = pickle.loads(etsiTs103097Data_Encrypted_bytes)
+print(etsiTs103097Data_Encrypted)
+
+# Now I have to extract the certificate from the RESPONSE
+# The Response is encrypted with aesccm
 
 app.run(port=5000)
