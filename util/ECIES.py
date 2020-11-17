@@ -1,9 +1,10 @@
-from tinyec import registry
+import hashlib
+import hmac
 import secrets
+
 from Cryptodome.Protocol.KDF import scrypt
 from Cryptodome.Random import get_random_bytes
-import hmac
-import hashlib
+from tinyec import registry
 
 curve = registry.get_curve('secp256r1')
 
@@ -20,7 +21,7 @@ def generate_shared_secret(ephemeralPrivKey, publicKeyOfReceiver):
 
 
 def key_derivation_func(sharedSecret, salt):
-    keyKDF = scrypt(hex(sharedSecret), salt, 48, N=2**14, r=8, p=1)
+    keyKDF = scrypt(hex(sharedSecret), salt, 48, N=2 ** 14, r=8, p=1)
     Ke = keyKDF[:16]
     Km = keyKDF[16:]
     return (Ke, Km)
@@ -37,10 +38,10 @@ def xor_strings(s, t) -> bytes:
 
 
 def xor2_strings(s, t) -> bytes:
-    while(len(s) > len(t)):
-        t = t + t[:(len(s)-len(t))]
+    while (len(s) > len(t)):
+        t = t + t[:(len(s) - len(t))]
 
-    if(len(s) < len(t)):
+    if (len(s) < len(t)):
         t = t[:len(s)]
         return xor_strings(s, t)
     else:
@@ -58,7 +59,7 @@ def generate_hmac(Km, c):
 
 
 def verify_hmac_tags(tag1, tag2):
-    if(tag1.digest() == tag2):
+    if (tag1.digest() == tag2):
         return True
     else:
         return False
@@ -79,7 +80,7 @@ def decrypt_ecies(V, c, t, salt, privKeyOfReceiver):
     Ke, Km = key_derivation_func(sharedSecret, salt)
     aesKey = xor2_strings(c, Ke)
     td = generate_hmac(Km, c)
-    if(verify_hmac_tags(td, t)):
+    if (verify_hmac_tags(td, t)):
         return aesKey
     else:
         return f'Something went wrong with the auth verify!'

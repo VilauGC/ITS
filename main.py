@@ -1,131 +1,23 @@
-from flask import Flask, request
-import secrets
-import sys
-import pickle
-import json
-import base64
-from tinyec import (registry, ec)
-from Cryptodome.Random import get_random_bytes
-from AESCCM import (encrypt_AESCCM, decrypt_AESCCM)
-from ECIES import (encrypt_ecies, decrypt_ecies)
-from ECDSA import signECDSAsecp256r1, verifyECDSAsecp256r1
-import requests
-
-
-app = Flask(__name__)
-
-
-@app.route('/EA/Enrolment', methods=['POST'])
-def ITS_Enrolment():
-    reqData = request.get_json()
-    print(reqData)
-    return f"OK {reqData}"
-
-
-def generateKeyPair_secp256r1():
-    curve = registry.get_curve('secp256r1')
-    r = secrets.randbelow(curve.field.n)
-    V = r * curve.g
-    return (r, V)
-
-
-def eciesEncription(message):
-    return message
-
-
-def xor_strings(s, t) -> bytes:
-    """xor two strings together."""
-    if isinstance(s, str):
-        # Text strings contain single characters
-        return b"".join(chr(ord(a) ^ ord(b)) for a, b in zip(s, t))
-    else:
-        # Python 3 bytes objects contain integer values in the range 0-255
-        return bytes([a ^ b for a, b in zip(s, t)])
-
-
-def xor2_strings(s, t) -> bytes:
-    while(len(s) > len(t)):
-        t = t + t[:(len(s)-len(t))]
-
-    if(len(s) < len(t)):
-        t = t[:len(s)]
-        return xor_strings(s, t)
-    else:
-        return xor_strings(s, t)
-
-
-def json_custom(x):
-    """
-    x has to be bytes
-    """
-    base64_x_bytes = base64.b64encode(x)
-    base64_x_message = base64_x_bytes.decode('ascii')
-    base64_x_message = json.dumps(base64_x_message)
-    return base64_x_message
-
-
-def json_to_bytes(x):
-    """
-    x is str type
-    """
-    base64_x_message = json.loads(x)
-    base64_x_message = base64_x_message.encode('ascii')
-    message_bytes = base64.b64decode(base64_x_message)
-
-    return message_bytes
-
-
-class InnerEcRequest:
-    def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
-        self.itsId = itsId
-        self.certificateFormat = certificateFormat
-        self.verificationKey = verificationKey
-        self.requestedSubjectAttributes = requestedSubjectAttributes
-
-
-class EtsiTs103097Data_Signed:
-    def __init__(self, hashId, tbsData, signer, signature):
-        self.hashId = hashId
-        self.tbsData = tbsData
-        self.signer = signer
-        self.signature = signature
-
-
-class EtsiTs102941Data:
-    def __init__(self, version, content):
-        self.version = version
-        self.content = content
-
-
-class EtsiTs103097Data_Encrypted:
-    def __init__(self, recipients, ciphertext):
-        self.recipients = recipients
-        self.ciphertext = ciphertext
-
-
-class InnerEcResponse:
-    def __init__(self, requestHash, responseCode, certificate):
-        self.requestHash = requestHash
-        self.responseCode = responseCode
-        self.certificate = certificate
-
-
-class ExplicitCertificate:
-    def __init__(self, _type, toBeSigned, signature):
-        self.type = _type
-        self.toBeSigned = toBeSigned
-        self.signature = signature
 
 # Enrolment pentru prima data la EA: ITS -> EA
 # Pasul 1
 # Creez un InnerEcRequest
+import json
+import pickle
 
+import requests
 
-f = open("./secp256r1pubkeyITS.txt", 'rb')
+from util.AESCCM import encrypt_AESCCM, decrypt_AESCCM
+from util.ECDSA import signECDSAsecp256r1, verifyECDSAsecp256r1
+from util.ECIES import encrypt_ecies, decrypt_ecies
+from util.classes import InnerEcRequest, EtsiTs103097Data_Signed, EtsiTs102941Data, EtsiTs103097Data_Encrypted
+from util.functions import json_custom, json_to_bytes
+
+f = open("secp256r1pubkeyITS.txt", 'rb')
 ITS_pubkey_bytes = f.read()
 ITS_pubkey = pickle.loads(ITS_pubkey_bytes)
 f.close()
-f = open("./secp256r1privkeyITS.txt", 'rb')
+f = open("secp256r1privkeyITS.txt", 'rb')
 ITS_privkey_bytes = f.read()
 ITS_privkey = pickle.loads(ITS_privkey_bytes)
 f.close()
@@ -183,7 +75,7 @@ etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
 # Creez un EtsiTs103097Data_Encrypted
 
 # Citesc cheia publica a EA-ului pentru a o folosi in criptare ecies a lui etsiTs103097Data_Signed
-f = open("../EA_API/secp256r1pubkeyEA.txt", 'rb')
+f = open("secp256r1pubkeyEA.txt", 'rb')
 pubkey_bytes = f.read()
 EA_pubKey = pickle.loads(pubkey_bytes)
 f.close()
@@ -209,7 +101,7 @@ cipher_etsiTs103097Data_Encrypted_bytes = encrypt_AESCCM(
 # Pasul 7
 # Criptez cheia AES-CCM cu algorimul ECIES
 
-f = open('../EA_API/secp256r1pubkeyEA.txt', 'rb')
+f = open('secp256r1pubkeyEA.txt', 'rb')
 pubkey_bytes = f.read()
 EA_pubKey = pickle.loads(pubkey_bytes)
 f.close()
@@ -233,7 +125,7 @@ json_t = json_custom(t.digest())
 # Trimit requestul prin http cu method POST
 
 # defining the api-endpoint
-API_ENDPOINT = "http://127.0.0.1:5001/its-enrolment"
+API_ENDPOINT = "http://127.0.0.1:5000/its-enrolment"
 
 # data to be sent to api
 data = {'c': json_c, 'V': json_V, 't': json_t,
@@ -242,7 +134,7 @@ data = {'c': json_c, 'V': json_V, 't': json_t,
         'header': json_header,
         'tag': json_tag}
 
-# sending post request to http://127.0.0.1:5001/its-enrolment
+# sending post request to http://127.0.0.1:5000/its-enrolment
 r = requests.post(url=API_ENDPOINT, json=data)
 
 data_response = json.loads(r.text)
@@ -289,5 +181,3 @@ innerEcResponse = etsiTs102941Data.content
 # Pasul 6 extragem certificatul ITS-ului semnat de catre EA
 
 ITS_Signed_Certificate = innerEcResponse.certificate
-
-app.run(port=5000)

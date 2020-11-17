@@ -12,11 +12,11 @@ def generateKeyPair_secp256r1():
 
 r, V = generateKeyPair_secp256r1()
 
-f = open("./secp256r1pubkeyITS.txt", 'wb')
+f = open("secp256r1pubkeyITS.txt", 'wb')
 f.write(pickle.dumps(V))
 f.close()
 
-f = open("./secp256r1privkeyITS.txt", 'wb')
+f = open("secp256r1privkeyITS.txt", 'wb')
 f.write(pickle.dumps(r))
 f.close()
 # f = open("../EA API/secp256r1pubkeyEA.txt", 'wb')

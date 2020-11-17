@@ -1,11 +1,14 @@
-from flask import Flask, request
-from ECIES import (decrypt_ecies, encrypt_ecies)
-from AESCCM import (decrypt_AESCCM, encrypt_AESCCM, encrypt_AESCCM_withKey)
-from ECDSA import (verifyECDSAsecp256r1, signECDSAsecp256r1)
 import json
-import base64
 import pickle
-import hashlib
+
+from flask import Flask, request
+
+from util.AESCCM import (decrypt_AESCCM, encrypt_AESCCM_withKey)
+from util.ECDSA import signECDSAsecp256r1, verifyECDSAsecp256r1
+from util.ECIES import (encrypt_ecies, decrypt_ecies)
+from util.classes import ExplicitCertificate, InnerEcResponse, EtsiTs102941Data, EtsiTs103097Data_Signed, \
+    EtsiTs103097Data_Encrypted
+from util.functions import json_to_bytes, json_custom, sha3_256Hash
 
 app = Flask(__name__)
 
@@ -33,7 +36,7 @@ def its_enrolment():
     tag_ccm = json_to_bytes(tag)
     header_ccm = json_to_bytes(header)
     nonce_ccm = json_to_bytes(nonce)
-    f = open('./secp256r1privkeyEA.txt', 'rb')
+    f = open('secp256r1privkeyEA.txt', 'rb')
     privkey_bytes = f.read()
     EA_privkey = pickle.loads(privkey_bytes)
     f.close()
@@ -50,7 +53,7 @@ def its_enrolment():
     etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
 
     # get the ITS pub key
-    f = open("../ITS_API/secp256r1pubkeyITS.txt", 'rb')
+    f = open("secp256r1pubkeyITS.txt", 'rb')
     ITS_pubkey_bytes = f.read()
     ITS_pubkey = pickle.loads(ITS_pubkey_bytes)
     f.close()
@@ -84,7 +87,7 @@ def its_enrolment():
 
     itsId = innerEcRequest.itsId
 
-    if(itsId in allowedITS):
+    if (itsId in allowedITS):
 
         # Pasul 1 in formarea unui Response
         # Se formeaza un obiect de tip InnerEcResponse
@@ -169,72 +172,11 @@ def its_enrolment():
         return "No such ITS found!"
 
 
-class InnerEcRequest:
-    def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
-        self.itsId = itsId
-        self.certificateFormat = certificateFormat
-        self.verificationKey = verificationKey
-        self.requestedSubjectAttributes = requestedSubjectAttributes
+@app.route('/EA/Enrolment', methods=['POST'])
+def ITS_Enrolment():
+    reqData = request.get_json()
+    print(reqData)
+    return f"OK {reqData}"
 
 
-class InnerEcResponse:
-    def __init__(self, requestHash, responseCode, certificate):
-        self.requestHash = requestHash
-        self.responseCode = responseCode
-        self.certificate = certificate
-
-
-class EtsiTs102941Data:
-    def __init__(self, version, content):
-        self.version = version
-        self.content = content
-
-
-class EtsiTs103097Data_Signed:
-    def __init__(self, hashId, tbsData, signer, signature):
-        self.hashId = hashId
-        self.tbsData = tbsData
-        self.signer = signer
-        self.signature = signature
-
-
-class EtsiTs103097Data_Encrypted:
-    def __init__(self, recipients, ciphertext):
-        self.recipients = recipients
-        self.ciphertext = ciphertext
-
-
-class ExplicitCertificate:
-    def __init__(self, _type, toBeSigned, signature):
-        self.type = _type
-        self.toBeSigned = toBeSigned
-        self.signature = signature
-
-
-def json_to_bytes(x):
-    """
-    x is str type
-    """
-    base64_x_message = json.loads(x)
-    base64_x_message = base64_x_message.encode('ascii')
-    message_bytes = base64.b64decode(base64_x_message)
-
-    return message_bytes
-
-
-def json_custom(x):
-    """
-    x has to be bytes
-    """
-    base64_x_bytes = base64.b64encode(x)
-    base64_x_message = base64_x_bytes.decode('ascii')
-    base64_x_message = json.dumps(base64_x_message)
-    return base64_x_message
-
-
-def sha3_256Hash(msg):
-    hashBytes = hashlib.sha3_256(msg.encode("utf8")).digest()
-    return int.from_bytes(hashBytes, byteorder="big")
-
-
-app.run(port=5001)
+app.run(port=5000)

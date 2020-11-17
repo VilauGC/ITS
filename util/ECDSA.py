@@ -1,7 +1,7 @@
+import hashlib
+
 from pycoin.ecdsa.Generator import Generator
 from pycoin.ecdsa.secp256r1 import secp256r1_generator
-import hashlib
-import secrets
 
 
 def sha3_256Hash(msg):
@@ -19,7 +19,6 @@ def verifyECDSAsecp256r1(msg, signature, pubKey):
     msgHash = sha3_256Hash(msg)
     valid = Generator.verify(secp256r1_generator, pubKey, msgHash, signature)
     return valid
-
 
 # Testing the functions
 # ECDSA sign message (using the curve secp256r1 + SHA3-256)
