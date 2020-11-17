@@ -7,7 +7,7 @@ import base64
 from tinyec import (registry, ec)
 from Cryptodome.Random import get_random_bytes
 from AESCCM import (encrypt_AESCCM, decrypt_AESCCM)
-from ECIES import encrypt_ecies
+from ECIES import (encrypt_ecies, decrypt_ecies)
 from ECDSA import signECDSAsecp256r1, verifyECDSAsecp256r1
 import requests
 
@@ -101,6 +101,20 @@ class EtsiTs103097Data_Encrypted:
     def __init__(self, recipients, ciphertext):
         self.recipients = recipients
         self.ciphertext = ciphertext
+
+
+class InnerEcResponse:
+    def __init__(self, requestHash, responseCode, certificate):
+        self.requestHash = requestHash
+        self.responseCode = responseCode
+        self.certificate = certificate
+
+
+class ExplicitCertificate:
+    def __init__(self, _type, toBeSigned, signature):
+        self.type = _type
+        self.toBeSigned = toBeSigned
+        self.signature = signature
 
 # Enrolment pentru prima data la EA: ITS -> EA
 # Pasul 1
@@ -233,6 +247,8 @@ r = requests.post(url=API_ENDPOINT, json=data)
 
 data_response = json.loads(r.text)
 
+# Pasul 1 dupa EA RESPONSE
+
 response_cipher_bytes = json_to_bytes(data_response['ciphertext'])
 response_nonce_bytes = json_to_bytes(data_response['nonce'])
 response_header_bytes = json_to_bytes(data_response['header'])
@@ -246,9 +262,32 @@ etsiTs103097Data_Encrypted_bytes = decrypt_AESCCM(
     response_header_bytes)
 
 etsiTs103097Data_Encrypted = pickle.loads(etsiTs103097Data_Encrypted_bytes)
-print(etsiTs103097Data_Encrypted)
+(V, c, t_digest, salt) = etsiTs103097Data_Encrypted.ciphertext
 
-# Now I have to extract the certificate from the RESPONSE
-# The Response is encrypted with aesccm
+# Pasul 2 dupa EA RESPONSE formam un obiect etsiTs103097Data-Signed
+
+etsiTs103097Data_Signed_bytes = decrypt_ecies(
+    V, c, t_digest, salt, ITS_privkey)
+etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
+
+# Pasul 3 verificam semnatura ecdsa pentru tbsData
+
+tbsData = etsiTs103097Data_Signed.tbsData
+tbsData_bytes = pickle.dumps(tbsData)
+json_tbsData_bytes = json_custom(tbsData_bytes)
+is_signature = verifyECDSAsecp256r1(
+    json_tbsData_bytes, etsiTs103097Data_Signed.signature, (EA_pubKey.x, EA_pubKey.y))
+
+# Pasul 4 extragem obiectul de tip etsiTs102941Data din tbsData['payload']
+
+etsiTs102941Data = tbsData['payload']
+
+# Pasul 5 extragem din etsiTs102941Data content-ul care contine InnerEcResponse
+
+innerEcResponse = etsiTs102941Data.content
+
+# Pasul 6 extragem certificatul ITS-ului semnat de catre EA
+
+ITS_Signed_Certificate = innerEcResponse.certificate
 
 app.run(port=5000)
