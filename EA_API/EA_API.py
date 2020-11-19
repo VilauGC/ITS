@@ -1,3 +1,6 @@
+import sys
+sys.path.append("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\UTILS")
+
 from flask import Flask, request
 from ECIES import (decrypt_ecies, encrypt_ecies)
 from AESCCM import (decrypt_AESCCM, encrypt_AESCCM, encrypt_AESCCM_withKey)
@@ -23,7 +26,7 @@ def its_enrolment():
     tag = req_json["tag"]
     header = req_json["header"]
     nonce = req_json["nonce"]
-    # reconstruim infomatia la nivel de bytes
+    # reconstruim informatia la nivel de bytes
     V = json_to_bytes(V)
     V_inf = pickle.loads(V)
     t_digest = json_to_bytes(t)
@@ -33,7 +36,8 @@ def its_enrolment():
     tag_ccm = json_to_bytes(tag)
     header_ccm = json_to_bytes(header)
     nonce_ccm = json_to_bytes(nonce)
-    f = open('./secp256r1privkeyEA.txt', 'rb')
+    # f = open('./secp256r1privkeyEA.txt', 'rb')
+    f = open('C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1privkeyEA.txt', 'rb')
     privkey_bytes = f.read()
     EA_privkey = pickle.loads(privkey_bytes)
     f.close()
@@ -50,7 +54,11 @@ def its_enrolment():
     etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
 
     # get the ITS pub key
-    f = open("../ITS_API/secp256r1pubkeyITS.txt", 'rb')
+    # Aici ar trebui mai intai sa scot cheia publica a ITS-ului si mai apoi sa fac verificarile
+    # Dar pentru simplificare am luat cheia din fisier
+
+    # f = open("../ITS_API/secp256r1pubkeyITS.txt", 'rb')
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1pubkeyITS.txt", 'rb')
     ITS_pubkey_bytes = f.read()
     ITS_pubkey = pickle.loads(ITS_pubkey_bytes)
     f.close()

@@ -1,3 +1,6 @@
+import sys
+sys.path.append("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\UTILS")
+
 from flask import Flask, request
 import secrets
 import sys
@@ -121,11 +124,11 @@ class ExplicitCertificate:
 # Creez un InnerEcRequest
 
 
-f = open("./secp256r1pubkeyITS.txt", 'rb')
+f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1pubkeyITS.txt", 'rb')
 ITS_pubkey_bytes = f.read()
 ITS_pubkey = pickle.loads(ITS_pubkey_bytes)
 f.close()
-f = open("./secp256r1privkeyITS.txt", 'rb')
+f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1privkeyITS.txt", 'rb')
 ITS_privkey_bytes = f.read()
 ITS_privkey = pickle.loads(ITS_privkey_bytes)
 f.close()
@@ -183,7 +186,7 @@ etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
 # Creez un EtsiTs103097Data_Encrypted
 
 # Citesc cheia publica a EA-ului pentru a o folosi in criptare ecies a lui etsiTs103097Data_Signed
-f = open("../EA_API/secp256r1pubkeyEA.txt", 'rb')
+f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1pubkeyEA.txt", 'rb')
 pubkey_bytes = f.read()
 EA_pubKey = pickle.loads(pubkey_bytes)
 f.close()
@@ -209,7 +212,7 @@ cipher_etsiTs103097Data_Encrypted_bytes = encrypt_AESCCM(
 # Pasul 7
 # Criptez cheia AES-CCM cu algorimul ECIES
 
-f = open('../EA_API/secp256r1pubkeyEA.txt', 'rb')
+f = open('C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1pubkeyEA.txt', 'rb')
 pubkey_bytes = f.read()
 EA_pubKey = pickle.loads(pubkey_bytes)
 f.close()
@@ -289,5 +292,7 @@ innerEcResponse = etsiTs102941Data.content
 # Pasul 6 extragem certificatul ITS-ului semnat de catre EA
 
 ITS_Signed_Certificate = innerEcResponse.certificate
+print(ITS_Signed_Certificate)
+
 
 app.run(port=5000)

@@ -16,7 +16,7 @@ def encrypt_AESCCM(message):
 
 def encrypt_AESCCM_withKey(message, key):
     header = b'header'
-    aesKey = get_random_bytes(16)
+    aesKey = key
     nonce = get_random_bytes(12)
     cipher = AES.new(aesKey, AES.MODE_CCM, nonce)
     cipher.update(header)
@@ -24,7 +24,6 @@ def encrypt_AESCCM_withKey(message, key):
     data = {"AES-Key": aesKey, "ciphertext": ciphertext,
             "auth-tag": tag, "nonce": nonce, "header": header}
     return data
-
 
 def decrypt_AESCCM(key, nonce, ciphertext, tag, header):
     cipher = AES.new(key, AES.MODE_CCM, nonce=nonce)
