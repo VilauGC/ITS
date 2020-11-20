@@ -13,7 +13,9 @@ from AESCCM import (encrypt_AESCCM, decrypt_AESCCM)
 from ECIES import (encrypt_ecies, decrypt_ecies)
 from ECDSA import signECDSAsecp256r1, verifyECDSAsecp256r1
 import requests
-
+from models import (EtsiTs102941Data, EtsiTs103097Data_Encrypted, EtsiTs103097Data_Signed, ExplicitCertificate, InnerEcRequest, InnerEcResponse)
+from functions import (json_custom, json_to_bytes)
+from authorizationRequest import make_authorization_request
 
 app = Flask(__name__)
 
@@ -23,101 +25,6 @@ def ITS_Enrolment():
     reqData = request.get_json()
     print(reqData)
     return f"OK {reqData}"
-
-
-def generateKeyPair_secp256r1():
-    curve = registry.get_curve('secp256r1')
-    r = secrets.randbelow(curve.field.n)
-    V = r * curve.g
-    return (r, V)
-
-
-def eciesEncription(message):
-    return message
-
-
-def xor_strings(s, t) -> bytes:
-    """xor two strings together."""
-    if isinstance(s, str):
-        # Text strings contain single characters
-        return b"".join(chr(ord(a) ^ ord(b)) for a, b in zip(s, t))
-    else:
-        # Python 3 bytes objects contain integer values in the range 0-255
-        return bytes([a ^ b for a, b in zip(s, t)])
-
-
-def xor2_strings(s, t) -> bytes:
-    while(len(s) > len(t)):
-        t = t + t[:(len(s)-len(t))]
-
-    if(len(s) < len(t)):
-        t = t[:len(s)]
-        return xor_strings(s, t)
-    else:
-        return xor_strings(s, t)
-
-
-def json_custom(x):
-    """
-    x has to be bytes
-    """
-    base64_x_bytes = base64.b64encode(x)
-    base64_x_message = base64_x_bytes.decode('ascii')
-    base64_x_message = json.dumps(base64_x_message)
-    return base64_x_message
-
-
-def json_to_bytes(x):
-    """
-    x is str type
-    """
-    base64_x_message = json.loads(x)
-    base64_x_message = base64_x_message.encode('ascii')
-    message_bytes = base64.b64decode(base64_x_message)
-
-    return message_bytes
-
-
-class InnerEcRequest:
-    def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
-        self.itsId = itsId
-        self.certificateFormat = certificateFormat
-        self.verificationKey = verificationKey
-        self.requestedSubjectAttributes = requestedSubjectAttributes
-
-
-class EtsiTs103097Data_Signed:
-    def __init__(self, hashId, tbsData, signer, signature):
-        self.hashId = hashId
-        self.tbsData = tbsData
-        self.signer = signer
-        self.signature = signature
-
-
-class EtsiTs102941Data:
-    def __init__(self, version, content):
-        self.version = version
-        self.content = content
-
-
-class EtsiTs103097Data_Encrypted:
-    def __init__(self, recipients, ciphertext):
-        self.recipients = recipients
-        self.ciphertext = ciphertext
-
-
-class InnerEcResponse:
-    def __init__(self, requestHash, responseCode, certificate):
-        self.requestHash = requestHash
-        self.responseCode = responseCode
-        self.certificate = certificate
-
-
-class ExplicitCertificate:
-    def __init__(self, _type, toBeSigned, signature):
-        self.type = _type
-        self.toBeSigned = toBeSigned
-        self.signature = signature
 
 # Enrolment pentru prima data la EA: ITS -> EA
 # Pasul 1
@@ -293,6 +200,8 @@ innerEcResponse = etsiTs102941Data.content
 
 ITS_Signed_Certificate = innerEcResponse.certificate
 print(ITS_Signed_Certificate)
+
+make_authorization_request()
 
 
 app.run(port=5000)

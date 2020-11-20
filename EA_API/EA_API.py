@@ -5,6 +5,12 @@ from flask import Flask, request
 from ECIES import (decrypt_ecies, encrypt_ecies)
 from AESCCM import (decrypt_AESCCM, encrypt_AESCCM, encrypt_AESCCM_withKey)
 from ECDSA import (verifyECDSAsecp256r1, signECDSAsecp256r1)
+from functions import (json_to_bytes, json_custom, sha3_256Hash)
+from models import (ExplicitCertificate, 
+InnerEcResponse, 
+EtsiTs102941Data, 
+EtsiTs103097Data_Signed,
+EtsiTs103097Data_Encrypted)
 import json
 import base64
 import pickle
@@ -176,73 +182,6 @@ def its_enrolment():
         print("No such ITS found!")
         return "No such ITS found!"
 
-
-class InnerEcRequest:
-    def __init__(self, itsId, certificateFormat, verificationKey, requestedSubjectAttributes):
-        self.itsId = itsId
-        self.certificateFormat = certificateFormat
-        self.verificationKey = verificationKey
-        self.requestedSubjectAttributes = requestedSubjectAttributes
-
-
-class InnerEcResponse:
-    def __init__(self, requestHash, responseCode, certificate):
-        self.requestHash = requestHash
-        self.responseCode = responseCode
-        self.certificate = certificate
-
-
-class EtsiTs102941Data:
-    def __init__(self, version, content):
-        self.version = version
-        self.content = content
-
-
-class EtsiTs103097Data_Signed:
-    def __init__(self, hashId, tbsData, signer, signature):
-        self.hashId = hashId
-        self.tbsData = tbsData
-        self.signer = signer
-        self.signature = signature
-
-
-class EtsiTs103097Data_Encrypted:
-    def __init__(self, recipients, ciphertext):
-        self.recipients = recipients
-        self.ciphertext = ciphertext
-
-
-class ExplicitCertificate:
-    def __init__(self, _type, toBeSigned, signature):
-        self.type = _type
-        self.toBeSigned = toBeSigned
-        self.signature = signature
-
-
-def json_to_bytes(x):
-    """
-    x is str type
-    """
-    base64_x_message = json.loads(x)
-    base64_x_message = base64_x_message.encode('ascii')
-    message_bytes = base64.b64decode(base64_x_message)
-
-    return message_bytes
-
-
-def json_custom(x):
-    """
-    x has to be bytes
-    """
-    base64_x_bytes = base64.b64encode(x)
-    base64_x_message = base64_x_bytes.decode('ascii')
-    base64_x_message = json.dumps(base64_x_message)
-    return base64_x_message
-
-
-def sha3_256Hash(msg):
-    hashBytes = hashlib.sha3_256(msg.encode("utf8")).digest()
-    return int.from_bytes(hashBytes, byteorder="big")
 
 
 app.run(port=5001)
