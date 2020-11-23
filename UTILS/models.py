@@ -48,7 +48,7 @@ class EtsiTs103097Data_Signed:
         self.signer = signer
         self.signature = signature
 
-class SharedAtRequest:
+class SharedATRequest:
     def __init__(self, eaId, keyTag, certificateFormat, requestSubjectAttributes):
         self.eaId = eaId
         self.keyTag = keyTag

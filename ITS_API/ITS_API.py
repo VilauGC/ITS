@@ -201,7 +201,7 @@ innerEcResponse = etsiTs102941Data.content
 ITS_Signed_Certificate = innerEcResponse.certificate
 print(ITS_Signed_Certificate)
 
-make_authorization_request()
-
+test = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
+print(test)
 
 app.run(port=5000)
