@@ -3,8 +3,14 @@ Authorization Request sent by ITS after receiving EC from EA after a successful 
 
 """
 from functions import (generateKeyPair_secp256r1, generate_hmac, json_custom)
-from models import (SharedATRequest, EtsiTs103097Data_SignedExternalPayload)
+from models import (SharedATRequest,
+                    EtsiTs103097Data_SignedExternalPayload,
+                    EtsiTs103097Data_Encrypted,
+                    InnerATRequest,
+                    EtsiTs102941Data,
+                    EtsiTs103097Data_Signed)
 from ECDSA import (sha3_256Hash, signECDSAsecp256r1)
+from ECIES import encrypt_ecies
 from Cryptodome.Random import get_random_bytes
 import pickle
 import json
@@ -79,10 +85,90 @@ def make_authorization_request(EC_Certificate, ITS_privKey):
     signer_json = json.dumps(signer)
 
     signer = signer_json[:8]  # hashedId8
-    print(signer)
     signature = signECDSAsecp256r1(json_tbsData_bytes, ITS_privKey)
 
     etsiTs103097Data_SignedExternalPayload = EtsiTs103097Data_SignedExternalPayload(
         hashId, tbsData, signer, signature)
 
-    return etsiTs103097Data_SignedExternalPayload
+    # Pasul 7 Se creeaza un obiect de tip EtsiTs103097Data_Encrypted peste EtsiTs103097Data_SignedExternalPayload
+
+    # Pasul 7.1 Se creeaza un hash pentru certificatul EA-ului
+    EA_Certificate_bytes = pickle.dumps(EA_Certificate)
+    json_EA_Certificate_bytes = json_custom(EA_Certificate_bytes)
+
+    recipientId = sha3_256Hash(json_EA_Certificate_bytes)
+    recipientId_json = json.dumps(recipientId)
+    recipientId = recipientId_json[:8]
+
+    encKey = EA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
+
+    # Pasul 7.2 Se cripteaza EtsiTs103097Data_SignedExternalPayload cu alg. ECIES folosind cheia encKey, care este cheia publica a EA-ului
+
+    etsiTs103097Data_SignedExternalPayload_bytes = pickle.dumps(
+        etsiTs103097Data_SignedExternalPayload)
+    (V, c, t, salt) = encrypt_ecies(
+        etsiTs103097Data_SignedExternalPayload_bytes, encKey)
+    ciphertext = (V, c, t.digest(), salt)
+
+    recipients = {'recipientId': recipientId, 'encKey': encKey}
+
+    etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(
+        recipients, ciphertext)
+
+    # Pasul 8 Se creeaza un obiect de tipul InnerATRequest
+
+    publicKeys = (V_ef, V_enc)
+    hmacKey = hmac_key
+    innerATRequest = InnerATRequest(
+        publicKeys, hmacKey, sharedATRequest, etsiTs103097Data_Encrypted)
+
+    # Pasul 9 Se creeaza un obiect de tipul EtsiTs102941Data
+
+    version = 1
+    content = innerATRequest
+
+    etsiTs102941Data = EtsiTs102941Data(version, content)
+
+    # Pasul 10 Se creeaza un obiect de tipul EtsiTs103097Data_Signed Obs: Acesta este optional
+
+    hashId = 'SHA256'
+    tbsData = {'payload': etsiTs102941Data, 'headerInfo': ''}
+    tbsData_bytes = pickle.dumps(tbsData)
+    json_tbsData_bytes = json_custom(tbsData_bytes)
+    signature = signECDSAsecp256r1(json_tbsData_bytes, r_ef)
+    signer = 'self'
+
+    etsiTs103097Data_Signed = EtsiTs103097Data_Signed(hashId, tbsData, signer, signature)
+
+    # Pasul 11 Se creeaza un obiect EtsiTs103097Data_Encrypted peste EtsiTs103097Data_Signed
+
+    # 11.1 Se citeste certificatul AA-ului
+
+    f = open(
+        "C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\AA_API\\AA_Certificate.txt", 'rb')
+    AA_Certificate_bytes = f.read()
+    AA_Certificate = pickle.loads(AA_Certificate_bytes)
+    f.close()
+    
+    # Pasul 11.2 Se creeaza un hash pentru certificatul AA-ului
+    AA_Certificate_bytes = pickle.dumps(AA_Certificate)
+    json_AA_Certificate_bytes = json_custom(AA_Certificate_bytes)
+
+    recipientId = sha3_256Hash(json_AA_Certificate_bytes)
+    recipientId_json = json.dumps(recipientId)
+    recipientId = recipientId_json[:8]
+    
+    encKey = AA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
+
+    # Pasul 11.3 Se cripteaza EtsiTs103097Data_Signed cu alg. ECIES folosind cheia encKey, care este cheia publica a AA-ului
+
+    etsiTs103097Data_Signed_bytes = pickle.dumps(etsiTs103097Data_Signed)
+    (V, c, t, salt) = encrypt_ecies(
+        etsiTs103097Data_Signed_bytes, encKey)
+    ciphertext = (V, c, t.digest(), salt)
+
+    recipients = {'recipientId': recipientId, 'encKey': encKey}
+
+    etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(recipients, ciphertext)
+    
+    return etsiTs103097Data_Encrypted

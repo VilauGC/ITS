@@ -62,7 +62,7 @@ class EtsiTs103097Data_SignedExternalPayload:
         self.signer = signer
         self.signature = signature
 
-class InnerAtRequest:
+class InnerATRequest:
     def __init__(self, publicKeys, hmacKey, sharedAtRequest, ecSignature):
         self.publicKeys = publicKeys
         self.hmacKey = hmacKey
