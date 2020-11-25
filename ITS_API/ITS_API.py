@@ -201,7 +201,17 @@ innerEcResponse = etsiTs102941Data.content
 ITS_Signed_Certificate = innerEcResponse.certificate
 print(ITS_Signed_Certificate)
 
-test = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
-print(test)
+
+# Se trimite request catre AA pentru autentificare 
+
+API_ENDPOINT = "http://127.0.0.1:5002/its-authorization"
+etsiTs103097Data_Encrypted = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
+
+json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
+
+r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
+
+data_response = json.loads(r.text)
+
 
 app.run(port=5000)
