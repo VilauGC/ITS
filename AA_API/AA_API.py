@@ -117,6 +117,7 @@ def its_authorization():
                 # TODO
                 # AA -> EA AuthorizationValidationRequest asking for the authorization validation for the requeste AT
                 # EA -> AA AuthorizationValidationResponse
+                
                 return {'hello': 1}
 
 

@@ -3,6 +3,10 @@ from Cryptodome.Random import get_random_bytes
 
 
 def encrypt_AESCCM(message):
+    """
+    message has to be bytes string
+
+    """
     header = b'header'
     aesKey = get_random_bytes(16)
     nonce = get_random_bytes(12)

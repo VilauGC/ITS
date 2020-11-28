@@ -68,3 +68,8 @@ class InnerATRequest:
         self.hmacKey = hmacKey
         self.sharedATRequest = sharedATRequest
         self.ecSignature = ecSignature
+
+class AuthorizationValidationRequest:
+    def __init__(self, ecSignature, sharedATRequest):
+        self.ecSignature = ecSignature
+        self.sharedATRequest = sharedATRequest
