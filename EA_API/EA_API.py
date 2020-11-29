@@ -122,6 +122,8 @@ def its_enrolment():
         innerEcResponse = InnerEcResponse(
             requestHash, responseCode, its_certificate)
 
+        # 1.2 TODO Se salveaza certificatul intr-un fisier enrolment_certificates
+
         # Pasul 2
         # Se formeaza un obiect de tip EtsiTs102941Data
 
@@ -181,6 +183,85 @@ def its_enrolment():
     else:
         print("No such ITS found!")
         return "No such ITS found!"
+
+@app.route('/authorizationValidation', methods=['POST'])
+def authorizationValidation():
+    req_json = request.get_json()
+    etsiTs103097Data_Encrypted = pickle.loads(json_to_bytes(req_json))
+
+    # Pasul 1 Scot cipherul cheii AES din recipients encKey din etsiTs103097Data_Encrypted
+
+    encKey = etsiTs103097Data_Encrypted.recipients['encKey']
+
+    (V, c, t_digest, salt) = encKey
+
+    # Pasul 2 Decriptam c din encKey pentru a obtine cheia AES decrypt_ecies
+    f = open('C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1privkeyEA.txt', 'rb')
+    privkey_bytes = f.read()
+    EA_privkey = pickle.loads(privkey_bytes)
+    f.close()
+
+    aesKey = decrypt_ecies(V, c, t_digest, salt, EA_privkey)
+
+    # Pasul 3 Cu cheia aesKey de la pasul 2 decriptam ciphertextul din etsiTs103097Data_Encrypted
+
+    ciphertext = etsiTs103097Data_Encrypted.ciphertext
+
+    cipher_to_decrypt = ciphertext['ciphertext']
+    auth_tag = ciphertext['auth-tag']
+    nonce = ciphertext['nonce']
+    header = ciphertext['header']
+
+    etsiTs103097Data_Signed_bytes = decrypt_AESCCM(aesKey, nonce, cipher_to_decrypt, auth_tag, header)
+
+    etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
+
+    # Pasul 4 Se verifica semnatura pentru tbsData, signature from etsiTs103097Data_Signed
+
+    # 4.1 Se preia cheia publica din certificatul AA-ului
+
+    f = open(
+        "C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\AA_API\\AA_Certificate.txt", 'rb')
+    AA_Certificate_bytes = f.read()
+    AA_Certificate = pickle.loads(AA_Certificate_bytes)
+    f.close()
+
+    AA_pubKey = AA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
+
+    # 4.2 Se verifica semnatura cu ecdsa_verify
+
+    tbsData = etsiTs103097Data_Signed.tbsData
+    tbsData_bytes = pickle.dumps(tbsData)
+    json_tbsData_bytes = json_custom(tbsData_bytes)
+    signature_to_verify = etsiTs103097Data_Signed.signature
+    valid = verifyECDSAsecp256r1(json_tbsData_bytes, signature_to_verify, (AA_pubKey.x, AA_pubKey.y))
+
+    if(valid != True):
+        return "Something went wrong with the signature for tbsData from etsiTs103097Data_Signed"
+    else:
+        
+        # Pasul 5 Se extrage obiectul etsiTs102941Data din payload-ul lui tbsData
+
+        etsiTs102941Data = etsiTs103097Data_Signed.tbsData['payload']
+
+        # Pasul 6 Se extrage obiectul de tipul AuthorizationValidationRequest
+
+        authorizationValidationRequest = etsiTs102941Data.content
+
+        # Pasul 7 Se extrag obiectele sharedATRequest si ecSignature
+
+        sharedATRequest = authorizationValidationRequest.sharedATRequest
+
+        ecSignature = authorizationValidationRequest.ecSignature
+
+        # Pasul 8 Se verifica ecSignature
+        # TODO
+        # Verific daca hash-ul EC emis pentru its este acelasi cu cel din signer
+        # Verific daca semnatura este facuta cu cheia publica din certificatul EC
+
+        # Pasul 9 Se formeaza un AuthorizationValidationResponse
+
+        return 'Inside ELSE'
 
 
 

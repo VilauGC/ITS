@@ -199,6 +199,9 @@ innerEcResponse = etsiTs102941Data.content
 # Pasul 6 extragem certificatul ITS-ului semnat de catre EA
 
 ITS_Signed_Certificate = innerEcResponse.certificate
+
+# TODO 
+# Save the certificate in a file
 print(ITS_Signed_Certificate)
 
 

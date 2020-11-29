@@ -8,6 +8,7 @@ from ECIES import decrypt_ecies
 from authorizationValidationRequest import make_AVRequest
 import pickle
 import json
+import requests
 
 app = Flask(__name__)
 
@@ -121,12 +122,21 @@ def its_authorization():
                 # Return an AuthorizationResponse with negative response code different from 0
                 return {'Something went wrong with verifying keyTags'}
             else:
-                # TODO
-                # AA -> EA AuthorizationValidationRequest asking for the authorization validation for the requeste AT
-                # EA -> AA AuthorizationValidationResponse
+                # Pasul 9 Se creeaza un AuthorizationValidationRequest care va fi trimis catre EA
+                API_ENDPOINT = "http://127.0.0.1:5001/authorizationValidation"
+
                 (etsiTs103097Data_Encrypted, AES_Key) = make_AVRequest(sharedATRequest, ecSignature, AA_privKey)
                 
-                print(etsiTs103097Data_Encrypted, AES_Key)
+                json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
+
+                r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
+
+                # data_response = json.loads(r.text)
+
+                data_response = r.text
+
+                print(data_response)
+
 
                 return {'hello': 1}
 
