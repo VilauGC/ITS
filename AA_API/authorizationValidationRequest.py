@@ -15,7 +15,7 @@ from functions import (json_custom, sha3_256Hash)
 import pickle
 import json
 
-def make_AVRequest(ecSignature, sharedATRequest, privKeyAA, EA_Certificate):
+def make_AVRequest(ecSignature, sharedATRequest, privKeyAA):
     # Pasul 1 Se formeaza un obiect de tipul AuthorizationValidationRequest
     
     authorizationValidationRequest = AuthorizationValidationRequest(ecSignature, sharedATRequest)
@@ -38,6 +38,13 @@ def make_AVRequest(ecSignature, sharedATRequest, privKeyAA, EA_Certificate):
     etsiTs103097Data_Signed = EtsiTs103097Data_Signed(hashId, tbsData, signer, signature)
 
     # Pasul 4 Se formeaza un obiect de tipul EtsiTs103097Data_Encrypted
+    # Pasul 4.1 Se extrage certificatul EA-ului
+
+    f = open(
+        "C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\EA_Certificate.txt", 'rb')
+    EA_Certificate_bytes = f.read()
+    EA_Certificate = pickle.loads(EA_Certificate_bytes)
+    f.close()
 
     EA_Certificate_bytes = pickle.dumps(EA_Certificate)
     json_EA_Certificate_bytes = json_custom(EA_Certificate_bytes)

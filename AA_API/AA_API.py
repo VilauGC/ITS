@@ -5,6 +5,7 @@ from flask import Flask, request
 from functions import (json_to_bytes, json_custom, generate_hmac)
 from ECDSA import sha3_256Hash, verifyECDSAsecp256r1
 from ECIES import decrypt_ecies
+from authorizationValidationRequest import make_AVRequest
 import pickle
 import json
 
@@ -107,7 +108,13 @@ def its_authorization():
 
             sharedATRequest = innerATRequest.sharedATRequest
 
+            # 7.7 Extrag keyTag-ul din sharedATRequest
+
             keyTag_to_verify = sharedATRequest.keyTag
+
+            # 7.8 Extrag ecSignature din Request-ul de la ITS
+
+            ecSignature = innerATRequest.ecSignature
 
             if(keyTag != keyTag_to_verify):
                 # TODO 
@@ -117,26 +124,11 @@ def its_authorization():
                 # TODO
                 # AA -> EA AuthorizationValidationRequest asking for the authorization validation for the requeste AT
                 # EA -> AA AuthorizationValidationResponse
+                (etsiTs103097Data_Encrypted, AES_Key) = make_AVRequest(sharedATRequest, ecSignature, AA_privKey)
                 
+                print(etsiTs103097Data_Encrypted, AES_Key)
+
                 return {'hello': 1}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
