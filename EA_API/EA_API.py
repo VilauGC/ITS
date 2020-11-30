@@ -124,6 +124,12 @@ def its_enrolment():
 
         # 1.2 TODO Se salveaza certificatul intr-un fisier enrolment_certificates
 
+        hashCertificate = sha3_256Hash(json_custom(pickle.dumps(its_certificate)))
+
+        f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\ITS_Certificates.txt", 'wb')
+        f.write(pickle.dumps(hashCertificate))
+        f.close()
+
         # Pasul 2
         # Se formeaza un obiect de tip EtsiTs102941Data
 
@@ -233,6 +239,8 @@ def authorizationValidation():
     tbsData = etsiTs103097Data_Signed.tbsData
     tbsData_bytes = pickle.dumps(tbsData)
     json_tbsData_bytes = json_custom(tbsData_bytes)
+
+    print(len(json_tbsData_bytes))
     signature_to_verify = etsiTs103097Data_Signed.signature
     valid = verifyECDSAsecp256r1(json_tbsData_bytes, signature_to_verify, (AA_pubKey.x, AA_pubKey.y))
 

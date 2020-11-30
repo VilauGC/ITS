@@ -11,6 +11,7 @@ from models import (SharedATRequest,
                     EtsiTs103097Data_Signed)
 from ECDSA import (sha3_256Hash, signECDSAsecp256r1)
 from ECIES import encrypt_ecies
+from AESCCM import encrypt_AESCCM
 from Cryptodome.Random import get_random_bytes
 import pickle
 import json
@@ -91,6 +92,7 @@ def make_authorization_request(EC_Certificate, ITS_privKey):
         hashId, tbsData, signer, signature)
 
     # Pasul 7 Se creeaza un obiect de tip EtsiTs103097Data_Encrypted peste EtsiTs103097Data_SignedExternalPayload
+    # Acesta poarta numele de ecSignature
 
     # Pasul 7.1 Se creeaza un hash pentru certificatul EA-ului
     EA_Certificate_bytes = pickle.dumps(EA_Certificate)
@@ -100,27 +102,38 @@ def make_authorization_request(EC_Certificate, ITS_privKey):
     recipientId_json = json.dumps(recipientId)
     recipientId = recipientId_json[:8]
 
-    encKey = EA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
+    # Pasul 7.2 Se cripteaza EtsiTs103097Data_SignedExternalPayload cu algoritmul AESCCM
 
-    # Pasul 7.2 Se cripteaza EtsiTs103097Data_SignedExternalPayload cu alg. ECIES folosind cheia encKey, care este cheia publica a EA-ului
+    etsiTs103097Data_SignedExternalPayload_bytes = pickle.dumps(etsiTs103097Data_SignedExternalPayload)
 
-    etsiTs103097Data_SignedExternalPayload_bytes = pickle.dumps(
-        etsiTs103097Data_SignedExternalPayload)
-    (V, c, t, salt) = encrypt_ecies(
-        etsiTs103097Data_SignedExternalPayload_bytes, encKey)
-    ciphertext = (V, c, t.digest(), salt)
+    dataAESCCM_ec = encrypt_AESCCM(etsiTs103097Data_SignedExternalPayload_bytes)
+
+    AES_Key_ec = dataAESCCM_ec['AES-Key']
+
+    del dataAESCCM_ec['AES-Key']
+
+    ciphertext = dataAESCCM_ec
+
+    # Pasul 7.3 Criptam cheia AESKEY folosita la 7.2 cu ECIES si o punem in encKey din recipients
+
+    EA_pubKey = EA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
+
+    (V, c, t, salt) = encrypt_ecies(AES_Key_ec, EA_pubKey)
+
+    encKey = (V, c, t.digest(), salt)
 
     recipients = {'recipientId': recipientId, 'encKey': encKey}
 
-    etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(
-        recipients, ciphertext)
+    etsiTs103097Data_Encrypted_ec = EtsiTs103097Data_Encrypted(recipients, ciphertext)
+    
+    ecSignature = pickle.dumps(etsiTs103097Data_Encrypted_ec)
 
     # Pasul 8 Se creeaza un obiect de tipul InnerATRequest
 
     publicKeys = (V_ef, V_enc)
     hmacKey = hmac_key
     innerATRequest = InnerATRequest(
-        publicKeys, hmacKey, sharedATRequest, etsiTs103097Data_Encrypted)
+        publicKeys, hmacKey, sharedATRequest, ecSignature)
 
     # Pasul 9 Se creeaza un obiect de tipul EtsiTs102941Data
 
@@ -135,6 +148,7 @@ def make_authorization_request(EC_Certificate, ITS_privKey):
     tbsData = {'payload': etsiTs102941Data, 'headerInfo': ''}
     tbsData_bytes = pickle.dumps(tbsData)
     json_tbsData_bytes = json_custom(tbsData_bytes)
+
     signature = signECDSAsecp256r1(json_tbsData_bytes, r_ef)
     signer = 'self'
 
@@ -158,14 +172,25 @@ def make_authorization_request(EC_Certificate, ITS_privKey):
     recipientId_json = json.dumps(recipientId)
     recipientId = recipientId_json[:8]
     
-    encKey = AA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
+    AA_pubKey = AA_Certificate.toBeSigned['verifyKeyIndicator']['verificationKey']
 
-    # Pasul 11.3 Se cripteaza EtsiTs103097Data_Signed cu alg. ECIES folosind cheia encKey, care este cheia publica a AA-ului
+    # Pasul 11.3 Se cripteaza EtsiTs103097Data_Signed cu alg. AESCCM 
 
     etsiTs103097Data_Signed_bytes = pickle.dumps(etsiTs103097Data_Signed)
-    (V, c, t, salt) = encrypt_ecies(
-        etsiTs103097Data_Signed_bytes, encKey)
-    ciphertext = (V, c, t.digest(), salt)
+
+    dataAESCCM = encrypt_AESCCM(etsiTs103097Data_Signed_bytes)
+
+    AES_Key = dataAESCCM['AES-Key']
+
+    del dataAESCCM['AES-Key']
+
+    ciphertext = dataAESCCM
+
+    # Pasul 11.4 Criptam cheia AESKEY folosita la 11.3 cu ECIES si o punem in encKey din recipients
+
+    (V, c, t, salt) = encrypt_ecies(AES_Key, AA_pubKey)
+
+    encKey = (V, c, t.digest(), salt)
 
     recipients = {'recipientId': recipientId, 'encKey': encKey}
 

@@ -214,7 +214,11 @@ json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encr
 
 r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
 
-data_response = json.loads(r.text)
+# data_response = json.loads(r.text)
+data_response = r.text
+
+
+print(data_response)
 
 
 app.run(port=5000)

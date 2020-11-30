@@ -6,6 +6,7 @@ from functions import (json_to_bytes, json_custom, generate_hmac)
 from ECDSA import sha3_256Hash, verifyECDSAsecp256r1
 from ECIES import decrypt_ecies
 from authorizationValidationRequest import make_AVRequest
+from AESCCM import decrypt_AESCCM
 import pickle
 import json
 import requests
@@ -45,17 +46,28 @@ def its_authorization():
     if(AA_id_trim != recipients['recipientId']):
         return "This is not the right AA"
     else:
-        # Pasul 3 Se decripteaza ciphertext-ul folosind cheia privata a AA-ului
+        # Pasul 3 Se extrage cheia AES din ecies folosind cheia privata a AA-ului 
         f = open('C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\AA_API\\secp256r1privkeyAA.txt', 'rb')
         privkey_bytes = f.read()
         AA_privKey = pickle.loads(privkey_bytes)
         f.close()
        
-       
-        (V, c, t, salt) = ciphertext
-        etsiTs103097Data_Signed_bytes = decrypt_ecies(V, c, t, salt, AA_privKey)
+        encKey = etsiTs103097Data_Encrypted.recipients['encKey']
 
-        # Pasul 3.1 Se extrage obiectul etsiTs103097Data_Signed
+        (V, c, t_digest, salt) = encKey
+
+        aesKey = decrypt_ecies(V, c, t_digest, salt, AA_privKey)
+
+        ciphertext = etsiTs103097Data_Encrypted.ciphertext
+
+        cipher_to_decrypt = ciphertext['ciphertext']
+        auth_tag = ciphertext['auth-tag']
+        nonce = ciphertext['nonce']
+        header = ciphertext['header']
+
+        # Pasul 3.1 Se extrage obiectul etsiTs103097Data_Signed folosind cheia AES din algoritmul AESCCM
+        etsiTs103097Data_Signed_bytes = decrypt_AESCCM(aesKey, nonce, cipher_to_decrypt, auth_tag, header)
+
         etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
 
         # Pasul 4 Se extrage obiectul etsiTs102941Data 
@@ -78,11 +90,12 @@ def its_authorization():
         tbsData = etsiTs103097Data_Signed.tbsData
         tbsData_bytes = pickle.dumps(tbsData)
         json_tbsData_bytes = json_custom(tbsData_bytes)
+
         signature_to_verify = etsiTs103097Data_Signed.signature
         valid = verifyECDSAsecp256r1(json_tbsData_bytes, signature_to_verify, (V_ef.x, V_ef.y))
         
         if(valid != True):
-            return "Something went wrong with the signature for tbsData from etsiTs103097Data_Signed"
+            return "Something went TERIBLEEEE wrong with the signature for tbsData from etsiTs103097Data_Signed"
         else:
             # Pasul 7 Se verifica keyTag-ul
             hmacKey = innerATRequest.hmacKey
