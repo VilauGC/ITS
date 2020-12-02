@@ -15,7 +15,7 @@ from functions import (json_custom, sha3_256Hash)
 import pickle
 import json
 
-def make_AVRequest(ecSignature, sharedATRequest, privKeyAA):
+def make_AVRequest(sharedATRequest, ecSignature, privKeyAA):
     # Pasul 1 Se formeaza un obiect de tipul AuthorizationValidationRequest
     
     authorizationValidationRequest = AuthorizationValidationRequest(ecSignature, sharedATRequest)
@@ -32,8 +32,6 @@ def make_AVRequest(ecSignature, sharedATRequest, privKeyAA):
     tbsData = {'payload': etsiTs102941Data, 'headerInfo': ''}
     tbsData_bytes = pickle.dumps(tbsData)
     json_tbsData_bytes = json_custom(tbsData_bytes)
-
-    print(len(json_tbsData_bytes))
     signature = signECDSAsecp256r1(json_tbsData_bytes, privKeyAA)
     signer = 'self'
 

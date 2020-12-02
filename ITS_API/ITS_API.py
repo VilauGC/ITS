@@ -204,7 +204,6 @@ ITS_Signed_Certificate = innerEcResponse.certificate
 # Save the certificate in a file
 print(ITS_Signed_Certificate)
 
-
 # Se trimite request catre AA pentru autentificare 
 
 API_ENDPOINT = "http://127.0.0.1:5002/its-authorization"
@@ -216,7 +215,6 @@ r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
 
 # data_response = json.loads(r.text)
 data_response = r.text
-
 
 print(data_response)
 

@@ -6,6 +6,7 @@ from ECIES import (decrypt_ecies, encrypt_ecies)
 from AESCCM import (decrypt_AESCCM, encrypt_AESCCM, encrypt_AESCCM_withKey)
 from ECDSA import (verifyECDSAsecp256r1, signECDSAsecp256r1)
 from functions import (json_to_bytes, json_custom, sha3_256Hash)
+from its_certificates_hash import checkCertHash, getPubKeyForHashCertificate
 from models import (ExplicitCertificate, 
 InnerEcResponse, 
 EtsiTs102941Data, 
@@ -122,12 +123,10 @@ def its_enrolment():
         innerEcResponse = InnerEcResponse(
             requestHash, responseCode, its_certificate)
 
-        # 1.2 TODO Se salveaza certificatul intr-un fisier enrolment_certificates
-
-        hashCertificate = sha3_256Hash(json_custom(pickle.dumps(its_certificate)))
+        # 1.2 Se salveaza certificatul intr-un fisier enrolment_certificates
 
         f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\ITS_Certificates.txt", 'wb')
-        f.write(pickle.dumps(hashCertificate))
+        f.write(pickle.dumps(its_certificate))
         f.close()
 
         # Pasul 2
@@ -239,15 +238,12 @@ def authorizationValidation():
     tbsData = etsiTs103097Data_Signed.tbsData
     tbsData_bytes = pickle.dumps(tbsData)
     json_tbsData_bytes = json_custom(tbsData_bytes)
-
-    print(len(json_tbsData_bytes))
     signature_to_verify = etsiTs103097Data_Signed.signature
     valid = verifyECDSAsecp256r1(json_tbsData_bytes, signature_to_verify, (AA_pubKey.x, AA_pubKey.y))
 
     if(valid != True):
         return "Something went wrong with the signature for tbsData from etsiTs103097Data_Signed"
     else:
-        
         # Pasul 5 Se extrage obiectul etsiTs102941Data din payload-ul lui tbsData
 
         etsiTs102941Data = etsiTs103097Data_Signed.tbsData['payload']
@@ -260,16 +256,72 @@ def authorizationValidation():
 
         sharedATRequest = authorizationValidationRequest.sharedATRequest
 
-        ecSignature = authorizationValidationRequest.ecSignature
+        ecSignature_bytes = authorizationValidationRequest.ecSignature
+        ecSignature = pickle.loads(ecSignature_bytes)
 
         # Pasul 8 Se verifica ecSignature
-        # TODO
-        # Verific daca hash-ul EC emis pentru its este acelasi cu cel din signer
-        # Verific daca semnatura este facuta cu cheia publica din certificatul EC
 
-        # Pasul 9 Se formeaza un AuthorizationValidationResponse
+        f = open(
+        "C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\EA_Certificate.txt", 'rb')
+        EA_Certificate_bytes = f.read()
+        EA_Certificate = pickle.loads(EA_Certificate_bytes)
+        f.close()
 
-        return 'Inside ELSE'
+        EA_Certificate_bytes = pickle.dumps(EA_Certificate)
+        json_EA_Certificate_bytes = json_custom(EA_Certificate_bytes)
+
+        eaId = sha3_256Hash(json_EA_Certificate_bytes)
+        eaId_json = json.dumps(eaId)
+        eaId = eaId_json[:8]
+
+        if(eaId != ecSignature.recipients['recipientId']):
+            return 'This is not the right EA'
+        else:
+            # Pasul 8.1 Scot cipherul cheii AES din recipients encKey din ecSignature
+
+            encKey = ecSignature.recipients['encKey']
+
+            (V, c, t_digest, salt) = encKey
+
+            # Pasul 8.2 Decriptam c din encKey pentru a obtine cheia AES decrypt_ecies
+
+            aesKey_ec = decrypt_ecies(V, c, t_digest, salt, EA_privkey)
+
+            # Pasul 8.3 Cu cheia aesKey_ec de la pasul 8.2 decriptam ciphertextul din ecSignature
+
+            ciphertext = ecSignature.ciphertext
+
+            cipher_to_decrypt = ciphertext['ciphertext']
+            auth_tag = ciphertext['auth-tag']
+            nonce = ciphertext['nonce']
+            header = ciphertext['header']
+
+            etsiTs103097Data_SignedExternalPayload_bytes = decrypt_AESCCM(aesKey_ec, nonce, cipher_to_decrypt, auth_tag, header)
+
+            etsiTs103097Data_SignedExternalPayload = pickle.loads(etsiTs103097Data_SignedExternalPayload_bytes)
+
+            validHash = checkCertHash(etsiTs103097Data_SignedExternalPayload.signer)
+
+            if(validHash):
+                # Pasul 8.4 Se verifica semnatura peste tbsData din etsiTs103097Data_SignedExternalPayload
+                ITS_pubKey_bytes = getPubKeyForHashCertificate(etsiTs103097Data_SignedExternalPayload.signer)
+                ITS_pubKey = pickle.loads(ITS_pubKey_bytes)
+
+                tbsData = etsiTs103097Data_SignedExternalPayload.tbsData
+                tbsData_bytes = pickle.dumps(tbsData)
+                json_tbsData_bytes = json_custom(tbsData_bytes)
+                signature_to_verify = etsiTs103097Data_SignedExternalPayload.signature
+                validSignature = verifyECDSAsecp256r1(json_tbsData_bytes, signature_to_verify, (ITS_pubKey.x, ITS_pubKey.y))
+
+                if(validSignature):
+                    return 'Signature is valid'
+                else:
+                    return 'Signature over tbsData from ecSignature is not valid'
+            else:
+                return 'Inside third ELSE'
+
+
+
 
 
 
