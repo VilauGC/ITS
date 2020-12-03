@@ -7,6 +7,7 @@ from AESCCM import (decrypt_AESCCM, encrypt_AESCCM, encrypt_AESCCM_withKey)
 from ECDSA import (verifyECDSAsecp256r1, signECDSAsecp256r1)
 from functions import (json_to_bytes, json_custom, sha3_256Hash)
 from its_certificates_hash import checkCertHash, getPubKeyForHashCertificate
+from authorizationValidationResponse import make_AVResponse
 from models import (ExplicitCertificate, 
 InnerEcResponse, 
 EtsiTs102941Data, 
@@ -314,7 +315,10 @@ def authorizationValidation():
                 validSignature = verifyECDSAsecp256r1(json_tbsData_bytes, signature_to_verify, (ITS_pubKey.x, ITS_pubKey.y))
 
                 if(validSignature):
-                    return 'Signature is valid'
+
+                    etsiTs103097Data_Encrypted_response = make_AVResponse(eaId, EA_privkey, aesKey, req_json)
+                    json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
+                    return json_etsiTs103097Data_Encrypted
                 else:
                     return 'Signature over tbsData from ecSignature is not valid'
             else:

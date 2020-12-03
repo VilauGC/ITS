@@ -73,3 +73,9 @@ class AuthorizationValidationRequest:
     def __init__(self, ecSignature, sharedATRequest):
         self.ecSignature = ecSignature
         self.sharedATRequest = sharedATRequest
+
+class AuthorizationValidationResponse:
+    def __init__(self, requestHash, responseCode, confirmedSubjectAttributes):
+        self.requestHash = requestHash
+        self.responseCode = responseCode
+        self.confirmedSubjectAttributes = confirmedSubjectAttributes
