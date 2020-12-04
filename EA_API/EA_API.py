@@ -317,7 +317,7 @@ def authorizationValidation():
                 if(validSignature):
 
                     etsiTs103097Data_Encrypted_response = make_AVResponse(eaId, EA_privkey, aesKey, req_json)
-                    json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
+                    json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted_response))
                     return json_etsiTs103097Data_Encrypted
                 else:
                     return 'Signature over tbsData from ecSignature is not valid'
