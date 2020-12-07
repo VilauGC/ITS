@@ -6,6 +6,7 @@ from functions import (json_to_bytes, json_custom, generate_hmac)
 from ECDSA import sha3_256Hash, verifyECDSAsecp256r1
 from ECIES import decrypt_ecies
 from authorizationValidationRequest import make_AVRequest
+from authorizationResponse import make_authorizationResponse
 from decrypt_AVResponse import decrypt_AVResponse
 from AESCCM import decrypt_AESCCM
 import pickle
@@ -151,20 +152,14 @@ def its_authorization():
                 
                 if(response_code_from_EA != '0'):
                     print(response_code_from_EA)
+                    return 'Something went wrong when verifying in EA'
                 else:
-                    print(f'Urmeaza sa se creeze AuthorizationResponseeeee!!!')
+                    etsiTs103097Data_Encrypted_response = make_authorizationResponse(AA_id_trim, json_etsiTs103097Data_Encrypted, V_enc, AA_privKey, aesKey)
+                    json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted_response))
+                    return json_etsiTs103097Data_Encrypted
 
 
-
-
-
-
-                # TODO De decriptat raspunsul de la EA cu aceeasi cheie aes cu care a fost criptat
-                # De verificat daca responseCode-ul este egal cu 0 
-                # De creat AuthorizationResponse-ul catre ITS
-
-
-                return {'hello': 1}
+                
 
 
 

@@ -79,3 +79,9 @@ class AuthorizationValidationResponse:
         self.requestHash = requestHash
         self.responseCode = responseCode
         self.confirmedSubjectAttributes = confirmedSubjectAttributes
+
+class AuthorizationResponse:
+    def __init__(self, requestHash, responseCode, certificate):
+        self.requestHash = requestHash
+        self.responseCode = responseCode
+        self.certificate = certificate
