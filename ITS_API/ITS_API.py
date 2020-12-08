@@ -16,6 +16,7 @@ import requests
 from models import (EtsiTs102941Data, EtsiTs103097Data_Encrypted, EtsiTs103097Data_Signed, ExplicitCertificate, InnerEcRequest, InnerEcResponse)
 from functions import (json_custom, json_to_bytes)
 from authorizationRequest import make_authorization_request
+from decrypt_authorizationResponse import decrypt_authorizationResponse
 
 app = Flask(__name__)
 
@@ -207,17 +208,16 @@ print(ITS_Signed_Certificate)
 # Se trimite request catre AA pentru autentificare 
 
 API_ENDPOINT = "http://127.0.0.1:5002/its-authorization"
-etsiTs103097Data_Encrypted = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
+(etsiTs103097Data_Encrypted, AES_Key_ar) = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
 
 json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
 
 r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
 
-data_response = json.loads(r.text)
+data_response = r.text
 
-print(data_response)
+authorizationTicket = decrypt_authorizationResponse(data_response, AES_Key_ar)
 
-# TODO DECRYPT AUTHORIZATIONRESPONSE FROM AA
-
+print(authorizationTicket)
 
 app.run(port=5000)
