@@ -201,14 +201,16 @@ innerEcResponse = etsiTs102941Data.content
 
 ITS_Signed_Certificate = innerEcResponse.certificate
 
-# TODO 
-# Save the certificate in a file
-print(ITS_Signed_Certificate)
+# Se salveaza certificatul intr-un fisier enrolment_certificate
+
+f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\EnrolmentCertificates\\enrolment_certificate.txt", 'wb')
+f.write(pickle.dumps(ITS_Signed_Certificate))
+f.close()
 
 # Se trimite request catre AA pentru autentificare 
 
 API_ENDPOINT = "http://127.0.0.1:5002/its-authorization"
-(etsiTs103097Data_Encrypted, AES_Key_ar) = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
+(etsiTs103097Data_Encrypted, AES_Key_ar, r_enc) = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
 
 json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
 
@@ -218,6 +220,16 @@ data_response = r.text
 
 authorizationTicket = decrypt_authorizationResponse(data_response, AES_Key_ar)
 
-print(authorizationTicket)
+# Se salveaza certificatul intr-un fisier authorization_ticket_certificate
+
+f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\AuthorizationTickets\\authorization_ticket_certificate.txt", 'wb')
+f.write(pickle.dumps(authorizationTicket))
+f.close()
+
+# Se salveaza cheia privata aferenta authorization_ticket-ului
+
+f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\AuthorizationTickets\\privKeyForAT.txt", 'wb')
+f.write(pickle.dumps(r_enc))
+f.close()
 
 app.run(port=5000)

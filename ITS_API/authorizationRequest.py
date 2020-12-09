@@ -196,4 +196,4 @@ def make_authorization_request(EC_Certificate, ITS_privKey):
 
     etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(recipients, ciphertext)
     
-    return (etsiTs103097Data_Encrypted, AES_Key)
+    return (etsiTs103097Data_Encrypted, AES_Key, r_enc)

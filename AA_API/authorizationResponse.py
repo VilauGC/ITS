@@ -22,6 +22,12 @@ def make_authorizationResponse(aaId, itsRequest, V_enc, AA_privKey, aesKey):
     signature = signECDSAsecp256r1(json_toBeSigned_bytes, AA_privKey)
 
     its_certificate_AT = ExplicitCertificate(_type, toBeSigned, signature)
+
+    # Pasul 1.1 Se salveaza intr-un folder acest certificat 
+
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\AA_API\\AuthorizationTicketsIssued\\its_authorization_ticket_certificate.txt", 'wb')
+    f.write(pickle.dumps(its_certificate_AT))
+    f.close()
     
     # Pasul 2 Se creeaza un obiect de tipul AuthorizationResponse
    
