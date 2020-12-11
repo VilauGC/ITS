@@ -2,6 +2,7 @@ import sys
 sys.path.append("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\UTILS")
 
 from flask import Flask, request
+from flask_cors import CORS
 import secrets
 import sys
 import pickle
@@ -19,217 +20,222 @@ from authorizationRequest import make_authorization_request
 from decrypt_authorizationResponse import decrypt_authorizationResponse
 
 app = Flask(__name__)
+CORS(app)
 
 
-@app.route('/EA/Enrolment', methods=['POST'])
+@app.route('/Enrolment', methods=['GET'])
 def ITS_Enrolment():
-    reqData = request.get_json()
-    print(reqData)
-    return f"OK {reqData}"
+    # reqData = request.get_json()
+    # print(reqData)
+    
 
-# Enrolment pentru prima data la EA: ITS -> EA
-# Pasul 1
-# Creez un InnerEcRequest
-
-
-f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1pubkeyITS.txt", 'rb')
-ITS_pubkey_bytes = f.read()
-ITS_pubkey = pickle.loads(ITS_pubkey_bytes)
-f.close()
-f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1privkeyITS.txt", 'rb')
-ITS_privkey_bytes = f.read()
-ITS_privkey = pickle.loads(ITS_privkey_bytes)
-f.close()
+    # Enrolment pentru prima data la EA: ITS -> EA
+    # Pasul 1
+    # Creez un InnerEcRequest
 
 
-itsId = 'Lamborghini'
-# itsId = 'RenaultClio'
-certificateFormat = 'ts103097v131'
-# transform in bytes cheia publica care este de tipul POINT
-verificationKey = pickle.dumps(ITS_pubkey)
-requestedSubjectAttributes = ''
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1pubkeyITS.txt", 'rb')
+    ITS_pubkey_bytes = f.read()
+    ITS_pubkey = pickle.loads(ITS_pubkey_bytes)
+    f.close()
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\secp256r1privkeyITS.txt", 'rb')
+    ITS_privkey_bytes = f.read()
+    ITS_privkey = pickle.loads(ITS_privkey_bytes)
+    f.close()
 
 
-innerEcRequest = InnerEcRequest(
-    itsId, certificateFormat, verificationKey, requestedSubjectAttributes)
-
-# Pasul 2
-# Creez un EtsiTs103097Data_Signed
-
-# De completat cu numele algoritmului de hash folosit pentru semnarea ECDSA a lui tbsData
-hashId = 'sha3-256'
-# pentru simplificare am lasat headerInfo gol
-tbsData = {'payload': innerEcRequest, 'headerInfo': ''}
-tbsData_bytes = pickle.dumps(tbsData)
-json_tbsData_bytes = json_custom(tbsData_bytes)
-signer = 'self'
-signature = signECDSAsecp256r1(json_tbsData_bytes, ITS_privkey)
-
-etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
-    hashId, tbsData, signer, signature)
+    itsId = 'Lamborghini'
+    # itsId = 'RenaultClio'
+    certificateFormat = 'ts103097v131'
+    # transform in bytes cheia publica care este de tipul POINT
+    verificationKey = pickle.dumps(ITS_pubkey)
+    requestedSubjectAttributes = ''
 
 
-# Pasul 3
-# Creez un EtsiTs102941Data
+    innerEcRequest = InnerEcRequest(
+        itsId, certificateFormat, verificationKey, requestedSubjectAttributes)
 
-version = '1'
-content = etsiTs103097Data_Signed
+    # Pasul 2
+    # Creez un EtsiTs103097Data_Signed
 
-etsiTs102941Data = EtsiTs102941Data(version, content)
+    # De completat cu numele algoritmului de hash folosit pentru semnarea ECDSA a lui tbsData
+    hashId = 'sha3-256'
+    # pentru simplificare am lasat headerInfo gol
+    tbsData = {'payload': innerEcRequest, 'headerInfo': ''}
+    tbsData_bytes = pickle.dumps(tbsData)
+    json_tbsData_bytes = json_custom(tbsData_bytes)
+    signer = 'self'
+    signature = signECDSAsecp256r1(json_tbsData_bytes, ITS_privkey)
 
-# Pasul 4
-# Creez un EtsiTs103097Data_Signed
-hashId = ''
-tbsData = {'payload': etsiTs102941Data, 'headerInfo': ''}
-tbsData_bytes = pickle.dumps(tbsData)
-json_tbsData_bytes = json_custom(tbsData_bytes)
-signer = 'self'
-signature = signECDSAsecp256r1(json_tbsData_bytes, ITS_privkey)
-
-etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
-    hashId, tbsData, signer, signature)
+    etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
+        hashId, tbsData, signer, signature)
 
 
-# Pasul 5
-# Creez un EtsiTs103097Data_Encrypted
+    # Pasul 3
+    # Creez un EtsiTs102941Data
 
-# Citesc cheia publica a EA-ului pentru a o folosi in criptare ecies a lui etsiTs103097Data_Signed
-f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1pubkeyEA.txt", 'rb')
-pubkey_bytes = f.read()
-EA_pubKey = pickle.loads(pubkey_bytes)
-f.close()
-etsiTs103097Data_Signed_bytes = pickle.dumps(etsiTs103097Data_Signed)
-recipients = EA_pubKey
-(V, c, t, salt) = encrypt_ecies(etsiTs103097Data_Signed_bytes, EA_pubKey)
-ciphertext = (V, c, t.digest(), salt)
+    version = '1'
+    content = etsiTs103097Data_Signed
 
-etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(recipients, ciphertext)
+    etsiTs102941Data = EtsiTs102941Data(version, content)
 
+    # Pasul 4
+    # Creez un EtsiTs103097Data_Signed
+    hashId = ''
+    tbsData = {'payload': etsiTs102941Data, 'headerInfo': ''}
+    tbsData_bytes = pickle.dumps(tbsData)
+    json_tbsData_bytes = json_custom(tbsData_bytes)
+    signer = 'self'
+    signature = signECDSAsecp256r1(json_tbsData_bytes, ITS_privkey)
 
-# Pasul 6
-# Criptez obiectul etsiTs103097Data_Encrypted cu AES-CCM
-
-
-# Transform obiectul in bytes
-etsiTs103097Data_Encrypted_bytes = pickle.dumps(etsiTs103097Data_Encrypted)
-
-cipher_etsiTs103097Data_Encrypted_bytes = encrypt_AESCCM(
-    etsiTs103097Data_Encrypted_bytes)
+    etsiTs103097Data_Signed = EtsiTs103097Data_Signed(
+        hashId, tbsData, signer, signature)
 
 
-# Pasul 7
-# Criptez cheia AES-CCM cu algorimul ECIES
+    # Pasul 5
+    # Creez un EtsiTs103097Data_Encrypted
 
-f = open('C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1pubkeyEA.txt', 'rb')
-pubkey_bytes = f.read()
-EA_pubKey = pickle.loads(pubkey_bytes)
-f.close()
+    # Citesc cheia publica a EA-ului pentru a o folosi in criptare ecies a lui etsiTs103097Data_Signed
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1pubkeyEA.txt", 'rb')
+    pubkey_bytes = f.read()
+    EA_pubKey = pickle.loads(pubkey_bytes)
+    f.close()
+    etsiTs103097Data_Signed_bytes = pickle.dumps(etsiTs103097Data_Signed)
+    recipients = EA_pubKey
+    (V, c, t, salt) = encrypt_ecies(etsiTs103097Data_Signed_bytes, EA_pubKey)
+    ciphertext = (V, c, t.digest(), salt)
 
-(V, c, t, salt) = encrypt_ecies(
-    cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'], EA_pubKey)
-# Pasul 8
-# Formez obiectul JSON care va fi pus in body-ul request-lui http catre EA API
+    etsiTs103097Data_Encrypted = EtsiTs103097Data_Encrypted(recipients, ciphertext)
 
-json_c = json_custom(c)
-json_salt = json_custom(salt)
-json_cipher = json_custom(
-    cipher_etsiTs103097Data_Encrypted_bytes['ciphertext'])
-json_tag = json_custom(cipher_etsiTs103097Data_Encrypted_bytes['auth-tag'])
-json_header = json_custom(cipher_etsiTs103097Data_Encrypted_bytes['header'])
-json_nonce = json_custom(cipher_etsiTs103097Data_Encrypted_bytes['nonce'])
-json_V = json_custom(pickle.dumps(V))
-json_t = json_custom(t.digest())
 
-# Pasul 9
-# Trimit requestul prin http cu method POST
+    # Pasul 6
+    # Criptez obiectul etsiTs103097Data_Encrypted cu AES-CCM
 
-# defining the api-endpoint
-API_ENDPOINT = "http://127.0.0.1:5001/its-enrolment"
 
-# data to be sent to api
-data = {'c': json_c, 'V': json_V, 't': json_t,
-        'salt': json_salt, 'ciphertext': json_cipher,
-        'nonce': json_nonce,
-        'header': json_header,
-        'tag': json_tag}
+    # Transform obiectul in bytes
+    etsiTs103097Data_Encrypted_bytes = pickle.dumps(etsiTs103097Data_Encrypted)
 
-# sending post request to http://127.0.0.1:5001/its-enrolment
-r = requests.post(url=API_ENDPOINT, json=data)
+    cipher_etsiTs103097Data_Encrypted_bytes = encrypt_AESCCM(
+        etsiTs103097Data_Encrypted_bytes)
 
-data_response = json.loads(r.text)
 
-# Pasul 1 dupa EA RESPONSE
+    # Pasul 7
+    # Criptez cheia AES-CCM cu algorimul ECIES
 
-response_cipher_bytes = json_to_bytes(data_response['ciphertext'])
-response_nonce_bytes = json_to_bytes(data_response['nonce'])
-response_header_bytes = json_to_bytes(data_response['header'])
-response_tag_bytes = json_to_bytes(data_response['tag'])
+    f = open('C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\EA_API\\secp256r1pubkeyEA.txt', 'rb')
+    pubkey_bytes = f.read()
+    EA_pubKey = pickle.loads(pubkey_bytes)
+    f.close()
 
-etsiTs103097Data_Encrypted_bytes = decrypt_AESCCM(
-    cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'],
-    response_nonce_bytes,
-    response_cipher_bytes,
-    response_tag_bytes,
-    response_header_bytes)
+    (V, c, t, salt) = encrypt_ecies(
+        cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'], EA_pubKey)
+    # Pasul 8
+    # Formez obiectul JSON care va fi pus in body-ul request-lui http catre EA API
 
-etsiTs103097Data_Encrypted = pickle.loads(etsiTs103097Data_Encrypted_bytes)
-(V, c, t_digest, salt) = etsiTs103097Data_Encrypted.ciphertext
+    json_c = json_custom(c)
+    json_salt = json_custom(salt)
+    json_cipher = json_custom(
+        cipher_etsiTs103097Data_Encrypted_bytes['ciphertext'])
+    json_tag = json_custom(cipher_etsiTs103097Data_Encrypted_bytes['auth-tag'])
+    json_header = json_custom(cipher_etsiTs103097Data_Encrypted_bytes['header'])
+    json_nonce = json_custom(cipher_etsiTs103097Data_Encrypted_bytes['nonce'])
+    json_V = json_custom(pickle.dumps(V))
+    json_t = json_custom(t.digest())
 
-# Pasul 2 dupa EA RESPONSE formam un obiect etsiTs103097Data-Signed
+    # Pasul 9
+    # Trimit requestul prin http cu method POST
 
-etsiTs103097Data_Signed_bytes = decrypt_ecies(
-    V, c, t_digest, salt, ITS_privkey)
-etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
+    # defining the api-endpoint
+    API_ENDPOINT = "http://127.0.0.1:5001/its-enrolment"
 
-# Pasul 3 verificam semnatura ecdsa pentru tbsData
+    # data to be sent to api
+    data = {'c': json_c, 'V': json_V, 't': json_t,
+            'salt': json_salt, 'ciphertext': json_cipher,
+            'nonce': json_nonce,
+            'header': json_header,
+            'tag': json_tag}
 
-tbsData = etsiTs103097Data_Signed.tbsData
-tbsData_bytes = pickle.dumps(tbsData)
-json_tbsData_bytes = json_custom(tbsData_bytes)
-is_signature = verifyECDSAsecp256r1(
-    json_tbsData_bytes, etsiTs103097Data_Signed.signature, (EA_pubKey.x, EA_pubKey.y))
+    # sending post request to http://127.0.0.1:5001/its-enrolment
+    r = requests.post(url=API_ENDPOINT, json=data)
 
-# Pasul 4 extragem obiectul de tip etsiTs102941Data din tbsData['payload']
+    data_response = json.loads(r.text)
 
-etsiTs102941Data = tbsData['payload']
+    # Pasul 1 dupa EA RESPONSE
 
-# Pasul 5 extragem din etsiTs102941Data content-ul care contine InnerEcResponse
+    response_cipher_bytes = json_to_bytes(data_response['ciphertext'])
+    response_nonce_bytes = json_to_bytes(data_response['nonce'])
+    response_header_bytes = json_to_bytes(data_response['header'])
+    response_tag_bytes = json_to_bytes(data_response['tag'])
 
-innerEcResponse = etsiTs102941Data.content
+    etsiTs103097Data_Encrypted_bytes = decrypt_AESCCM(
+        cipher_etsiTs103097Data_Encrypted_bytes['AES-Key'],
+        response_nonce_bytes,
+        response_cipher_bytes,
+        response_tag_bytes,
+        response_header_bytes)
 
-# Pasul 6 extragem certificatul ITS-ului semnat de catre EA
+    etsiTs103097Data_Encrypted = pickle.loads(etsiTs103097Data_Encrypted_bytes)
+    (V, c, t_digest, salt) = etsiTs103097Data_Encrypted.ciphertext
 
-ITS_Signed_Certificate = innerEcResponse.certificate
+    # Pasul 2 dupa EA RESPONSE formam un obiect etsiTs103097Data-Signed
 
-# Se salveaza certificatul intr-un fisier enrolment_certificate
+    etsiTs103097Data_Signed_bytes = decrypt_ecies(
+        V, c, t_digest, salt, ITS_privkey)
+    etsiTs103097Data_Signed = pickle.loads(etsiTs103097Data_Signed_bytes)
 
-f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\EnrolmentCertificates\\enrolment_certificate.txt", 'wb')
-f.write(pickle.dumps(ITS_Signed_Certificate))
-f.close()
+    # Pasul 3 verificam semnatura ecdsa pentru tbsData
 
-# Se trimite request catre AA pentru autentificare 
+    tbsData = etsiTs103097Data_Signed.tbsData
+    tbsData_bytes = pickle.dumps(tbsData)
+    json_tbsData_bytes = json_custom(tbsData_bytes)
+    is_signature = verifyECDSAsecp256r1(
+        json_tbsData_bytes, etsiTs103097Data_Signed.signature, (EA_pubKey.x, EA_pubKey.y))
 
-API_ENDPOINT = "http://127.0.0.1:5002/its-authorization"
-(etsiTs103097Data_Encrypted, AES_Key_ar, r_enc) = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
+    # Pasul 4 extragem obiectul de tip etsiTs102941Data din tbsData['payload']
 
-json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
+    etsiTs102941Data = tbsData['payload']
 
-r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
+    # Pasul 5 extragem din etsiTs102941Data content-ul care contine InnerEcResponse
 
-data_response = r.text
+    innerEcResponse = etsiTs102941Data.content
 
-authorizationTicket = decrypt_authorizationResponse(data_response, AES_Key_ar)
+    # Pasul 6 extragem certificatul ITS-ului semnat de catre EA
 
-# Se salveaza certificatul intr-un fisier authorization_ticket_certificate
+    ITS_Signed_Certificate = innerEcResponse.certificate
 
-f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\AuthorizationTickets\\authorization_ticket_certificate.txt", 'wb')
-f.write(pickle.dumps(authorizationTicket))
-f.close()
+    # Se salveaza certificatul intr-un fisier enrolment_certificate
 
-# Se salveaza cheia privata aferenta authorization_ticket-ului
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\EnrolmentCertificates\\enrolment_certificate.txt", 'wb')
+    f.write(pickle.dumps(ITS_Signed_Certificate))
+    f.close()
 
-f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\AuthorizationTickets\\privKeyForAT.txt", 'wb')
-f.write(pickle.dumps(r_enc))
-f.close()
+    # Se trimite request catre AA pentru autentificare 
+
+    API_ENDPOINT = "http://127.0.0.1:5002/its-authorization"
+    (etsiTs103097Data_Encrypted, AES_Key_ar, r_enc) = make_authorization_request(ITS_Signed_Certificate, ITS_privkey)
+
+    json_etsiTs103097Data_Encrypted = json_custom(pickle.dumps(etsiTs103097Data_Encrypted))
+
+    r = requests.post(url=API_ENDPOINT, json=json_etsiTs103097Data_Encrypted)
+
+    data_response = r.text
+
+    authorizationTicket = decrypt_authorizationResponse(data_response, AES_Key_ar)
+
+    # Se salveaza certificatul intr-un fisier authorization_ticket_certificate
+
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\AuthorizationTickets\\authorization_ticket_certificate.txt", 'wb')
+    f.write(pickle.dumps(authorizationTicket))
+    f.close()
+
+    # Se salveaza cheia privata aferenta authorization_ticket-ului
+
+    f = open("C:\\1.workspace_vilau\\MASTER STI\\0.Disertatie\\ITS_PY\\ITS_API\\AuthorizationTickets\\privKeyForAT.txt", 'wb')
+    f.write(pickle.dumps(r_enc))
+    f.close()
+
+    return f"OK! All good!"
+
+
 
 app.run(port=5000)
